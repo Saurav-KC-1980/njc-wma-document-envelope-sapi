@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<flow name="createDocument" doc:id="ee248f6d-8ebd-47de-adcb-4c5eec0b462d" >
+		<ee:transform doc:name="Transform Message" doc:id="7bcfbad9-6470-4e65-b632-007b6dec306a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	Name: payload.envelope_name,
+	ReferenceObjectId: payload.client_id,
+	Vendor: "DocuSign",
+	EnvelopeMessageContent: payload.message,
+	EnvelopeIdentifier: payload.envelope_id,
+	Document_id__c: payload.document_id,
+	Status: "sent",
+	DeliveredDateTime: now(),
+	EnvelopeSubject: payload.subject
+}]
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create type="DocumentEnvelope" doc:name="Create" doc:id="0c01628b-4b6e-48a9-b2be-e474da6b7ea1" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="2c71d9ae-707e-446f-b588-1f4fa51192be" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Document created successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="fefe5e16-d5b8-4a46-857c-59db2df570ad" />
+		<error-handler ref="errorError_Handler"/>
+	</flow>
+	<flow name="updateEnvelope" doc:id="2d43c29b-1b5d-4148-9d5b-0b00c8268004" >
+		<ee:transform doc:name="Transform Message" doc:id="41f85df3-d07c-4f7b-80cf-4f65c51d7eb6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	Id: message.attributes.uriParams.id as String,
+	document_url__c: payload.url
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert objectType="DocumentEnvelope" externalIdFieldName="Id" doc:name="Upsert" doc:id="6ec8059c-0421-487d-aaa0-37e5f310bbf0" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="316aab5b-91f3-4c00-92d0-e2e3918fe390" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "url updated successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="a340965b-e3f2-4d72-af2c-654dbb649fb0" />
+		<error-handler ref="errorError_Handler"/>
+	</flow>
+</mule>
